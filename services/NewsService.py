@@ -24,7 +24,8 @@ class NewsService:
             raise ValueError(f"Model '{model_name}' not found in llm_config.json")
         
         self.llm = HuggingFaceEndpoint(
-                repo_id=repo_id, temperature=0.5, token=HUGGINGFACEHUB_API_TOKEN
+                repo_id=repo_id, temperature=0.5, token=HUGGINGFACEHUB_API_TOKEN,
+                task="text-generation"  
             )
         self.news_format = "[title, source, date(DD/MM/YYYY), news url];"
         self.news_number = 10
@@ -98,9 +99,12 @@ class NewsService:
     def toJSON(self, data: str):
         if len(data) == 0:
             return {}
+        
         news_list = data.split("\n")
         news_list_json = []
-        news_list.pop(0)
+        if news_list_json:
+            news_list_json.pop()
+    
         for item in news_list:
             # Avoid dirty data
             if len(item) == 0:
