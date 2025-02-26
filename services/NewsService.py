@@ -6,16 +6,13 @@ from flask import jsonify
 from langchain.chains import LLMChain
 from langchain.prompts import PromptTemplate
 from langchain_community.llms import HuggingFaceEndpoint
-
 from models.NewsModel import CybernewsDB
 from config.redis_config import get_cache, set_cache
-
 env_vars = dotenv_values(".env")
 HUGGINGFACEHUB_API_TOKEN = env_vars.get("HUGGINGFACE_TOKEN")
 os.environ["HUGGINGFACEHUB_API_TOKEN"] = HUGGINGFACEHUB_API_TOKEN
-
 class NewsService:
-    def __init__(self, model_name) -> None:
+    def __init__(self , model_name) -> None:
         self.db = CybernewsDB()
 
         # Load the LLM configuration
@@ -26,7 +23,6 @@ class NewsService:
         
         if not repo_id:
             raise ValueError(f"Model '{model_name}' not found in llm_config.json")
-        
         self.llm = HuggingFaceEndpoint(
                 repo_id=repo_id, temperature=0.5, token=HUGGINGFACEHUB_API_TOKEN,
                 task="text-generation" 
@@ -34,6 +30,10 @@ class NewsService:
         self.news_format = "[title, source, date(DD/MM/YYYY), news url];"
         self.news_number = 10
         self.model_name = model_name
+
+    """
+    Generate a unique cache key based on model and keywords
+    """
 
     def _generate_cache_key(self, user_keywords=None):
         """Generate a unique cache key based on model and keywords"""
@@ -46,15 +46,12 @@ class NewsService:
     """
     Return news while checking if keyword has been specified or not
     """
+
     def getNews(self, user_keywords=None):
         cache_key = self._generate_cache_key(user_keywords)
-        
-        # Try to get data from cache
         cached_data = get_cache(cache_key)
         if cached_data:
-            # Return cached data if available
             return json.loads(cached_data)
-            
         # Fetch news data from db:
         # Only fetch data with valid `author` and `newsDate`
         # Drop field "id" from collection
@@ -92,21 +89,21 @@ class NewsService:
 
         # Convert news data into JSON format
         news_JSON = self.toJSON(output['text'])
-        
-        # Cache the result
         set_cache(cache_key, json.dumps(news_JSON))
-  
         return news_JSON
 
+ 
     """
     deal requests with wrong route
     """
+
     def notFound(self, error):
         return jsonify({"error": error}), 404
     
     """
     Load JSON file
     """
+    
     def load_json_file(self, file_path):
         with open(file_path, 'r', encoding='utf-8') as file:
             data = json.load(file)
@@ -115,6 +112,7 @@ class NewsService:
     """
     Convert news given by Huggingface endpoint API into JSON format.
     """
+
     def toJSON(self, data: str):
         if len(data) == 0:
             return {}
